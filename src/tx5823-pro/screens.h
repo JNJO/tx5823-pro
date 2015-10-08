@@ -38,15 +38,17 @@ class screens
         char begin(const char *call_sign);
         void flip();
 
-        // MAIN MENU
-        void bindMode(uint8_t menu_id);
+        void updateFrequencyInformation(uint8_t channelName, uint16_t channelFrequency, const char *call_sign);
+
+        void updateStatus(const char *status);
+        void updateStatus(const char *status, bool invert);
+
+        // BIND MODE
+        void bindMode(uint8_t state, uint8_t channelName, uint16_t channelFrequency, const char *call_sign, bool force_redraw);
 
         // SCREEN SAVER
-        void screenSaver(uint8_t channelName, uint16_t channelFrequency, const char *call_sign);
-        void updateScreenSaver(uint8_t rssi);
+        void screenSaver(uint8_t channelName, uint16_t channelFrequency, const char *call_sign, bool force_redraw);
 
-        // SAVE
-        void save(uint8_t channelIndex, uint16_t channelFrequency, const char *call_sign);
 
 };
 #endif

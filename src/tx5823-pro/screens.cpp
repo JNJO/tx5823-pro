@@ -43,6 +43,8 @@ Adafruit_SSD1306 display(OLED_RESET);
     #error("Screen size incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
+bool blink = true;
+
 screens::screens() {
 }
 
@@ -74,4 +76,70 @@ void screens::reset() {
 
 void screens::flip() {
     display.setRotation(3);
+}
+
+
+void screens::updateFrequencyInformation(uint8_t channelName, uint16_t channelFrequency, const char *call_sign) {
+    reset();
+    display.setTextSize(1);
+    display.setCursor(48,0);
+    display.print(call_sign);
+    display.setTextSize(2);
+    display.setCursor(48,8);
+    display.setTextColor(WHITE);
+    display.print(channelFrequency);
+    display.setCursor(48+(12*4),15);
+    display.setTextSize(1);
+    display.print("Ghz");
+    display.drawPixel(48+(8*1+3),21, WHITE);
+
+    display.setTextSize(4);
+    display.setTextColor(WHITE);
+    display.setCursor(0,2);
+    display.print(channelName, HEX);
+    display.setTextSize(1);
+}
+
+void screens::updateStatus(const char *status) {
+    updateStatus(status, false);
+}
+
+void screens::updateStatus(const char *status,bool invert) {
+    blink = !blink;
+
+    // blank out status region
+    display.fillRect(48, display.height()-9, display.width()-48, 9, invert ? WHITE : BLACK);
+
+    display.setTextSize(1);
+    display.setCursor(48+(invert ? ((((display.width()-48) - (strlen(status)*6)) / 2)) : 0),24); // center text
+    display.setTextColor(blink ? BLACK : WHITE);
+    display.print(status);
+}
+
+void screens::bindMode(uint8_t state, uint8_t channelName, uint16_t channelFrequency, const char *call_sign, bool force_redraw){
+    if(force_redraw) {
+        updateFrequencyInformation(channelName, channelFrequency, call_sign);
+    }
+    switch(state) {
+        case STATE_BIND_MODE:
+        case STATE_BIND_MODE_WAITING:
+            updateStatus("BINDING",true);
+            break;
+        case STATE_BIND_MODE_RECEIVED:
+            // received good data
+            updateStatus("RECEIVED");
+            break;
+        case STATE_BIND_MODE_FAILED:
+            break;
+    }
+    display.display();
+}
+
+// SCREEN SAVER
+void screens::screenSaver(uint8_t channelName, uint16_t channelFrequency, const char *call_sign, bool force_redraw){
+    if(force_redraw) {
+        updateFrequencyInformation(channelName, channelFrequency, call_sign);
+    }
+    updateStatus("TRANSMITTING");
+    display.display();
 }
