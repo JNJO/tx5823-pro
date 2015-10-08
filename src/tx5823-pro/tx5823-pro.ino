@@ -67,6 +67,7 @@ const uint16_t channelFreqTable[] PROGMEM = {
 
 // do coding as simple hex value to save memory.
 const uint8_t channelNames[] PROGMEM = {
+  // Channel 1 - 8
   0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, // Band A
   0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, // Band B
   0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, // Band E
@@ -77,6 +78,7 @@ const uint8_t channelNames[] PROGMEM = {
 
 char call_sign[10];
 uint8_t channelIndex = 0;
+uint8_t state = 255; // force redraw
 
 // SETUP ----------------------------------------------------------------------------
 void setup()
@@ -87,7 +89,7 @@ void setup()
     digitalWrite(led, HIGH);
     // Bind Switch
     pinMode(bindSwitch, INPUT);
-    digitalWrite(bindSwitch, INPUT_PULLUP);
+    digitalWrite(bindSwitch, LOW);
 
     // SPI pins for RX control
     pinMode (slaveSelectPin, OUTPUT);
@@ -131,9 +133,142 @@ void setup()
     // rodate the display output 180 degrees.
     // drawScreen.flip();
 
+    Serial.begin(9600);
+
 }
 
 // LOOP ----------------------------------------------------------------------------
 void loop()
 {
+    static uint8_t last_state = state;
+    bool forceRedraw = false; // force a full screen redraw
+    if(digitalRead(bindSwitch) == HIGH) {
+        state = STATE_BIND_MODE;
+    }
+    else {
+        state = STATE_SCREEN_SAVER;
+    }
+
+    if(state != last_state) {
+        forceRedraw = true;
+    }
+
+
+    if(state == STATE_SCREEN_SAVER) {
+        if(millis() % 125 == 0 || forceRedraw) {
+            drawScreen.screenSaver(pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
+        }
+    }
+
+    if(state >= STATE_BIND_MODE && state <= STATE_BIND_MODE_FAILED) {
+        // watch for incoming payload
+        if(hasReceivedPayload()) {
+            forceRedraw = true;
+            //state = STATE_BIND_MODE_RECEIVED;
+        }
+        if(millis() % 125 == 0 || forceRedraw) {
+            drawScreen.bindMode(state, pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
+        }
+    }
+    last_state = state;
+}
+
+bool hasReceivedPayload() {
+    if(Serial.available() > 0) {
+        delay(20); // give some time for more bytes to flow in.
+        // received payload should look something like this ... "~(byte channel)(char[10] call sign)~(byte check sum)"
+                                                                // EXAMPLES: ~!ShIvey03~Z  ~ Luk_Luk~U
+        uint8_t c;
+        bool found_start = false;
+        uint8_t i = 0;
+        uint8_t check_sum_temp = 0, check_sum = 0;
+        char call_sign_temp[10] = "";
+        uint8_t channelIndex_temp = 0;
+        do{
+            delay(1); // give some time for more bytes to flow in.
+            c = Serial.read();
+            if(c == '~' && !found_start) { // start of payload
+                found_start = true;
+                check_sum_temp += c;
+                check_sum_temp += channelIndex_temp = Serial.read(); // read channel byte
+                continue;
+            }
+
+            if(c == '~' && found_start) { // end of payload
+                check_sum = (byte) Serial.read();
+                break;
+            }
+
+            if(found_start) { // start reiving call sign chars.
+                check_sum_temp += call_sign_temp[i++] = (char)c;
+            }
+        }
+        while(Serial.available() > 0 && i < 10);
+        call_sign_temp[i] = '\0';
+        while(Serial.available() > 0){Serial.read();Serial.flush();delay(1);}; // clear teh remaining buffer
+
+        if(check_sum == (byte) check_sum_temp) { // save valid channelIndex and call_sign
+            channelIndex = channelIndex_temp;
+            strcpy(call_sign, call_sign_temp);
+
+            // save 8 bit
+            EEPROM.write(EEPROM_ADR_TUNE,channelIndex);
+
+            // save call sign
+            for(uint8_t i = 0;i<sizeof(call_sign);i++) {
+                EEPROM.write(EEPROM_ADR_CALLSIGN+i,call_sign[i]);
+            }
+            return true; // sucessfull payload
+        }
+    }
+    return false;
+}
+
+/*
+ *  update the frequency registers on TX5823
+ */
+void set_5823_freq(uint8_t freq)
+{
+    uint32_t channelData;
+    // read in the channel information from the table, and add 0x00 04 00 00 to it
+    channelData = (pgm_read_word_near(channelTable + freq)) + 0x00040000;
+
+    // Setting the R-Counter is not necessary every time but doesn't hurt
+    spi_write(0x00, 0x0190);  // default value, provides 40kHz frequency resolution
+    spi_write(0x01, channelData);   // write N and A counter-dividers (from channel table)
+
+}
+
+
+/*
+ * execute a complete SPI write operation
+ */
+void spi_write(uint8_t addr, uint32_t data)
+{
+    uint32_t output;
+
+    //              FIRST  -  -  -  -  -  -  -  -  -  -  -  LAST
+    // Data Format: A0  A1  A2  A3  R/W  D0  D1  D2 ... D18  D19
+    output = ((data << 5) | 0x10) + (addr & 0x0f);
+
+    // start SPI transaction
+    digitalWrite(spiClockPin, LOW);
+    digitalWrite(slaveSelectPin, LOW);
+
+    // clock out data LSB first
+    for (uint8_t i = 25; i > 0; i--) {
+        if (output & 0x01) {
+              digitalWrite(spiDataPin, HIGH);  // output 1
+        }
+        else {
+              digitalWrite(spiDataPin, LOW);   // output 0
+        }
+        digitalWrite(spiClockPin, HIGH);   // data latched by 5823 here
+        digitalWrite(spiClockPin, LOW);    // clock ends low
+        output >>= 1;                        // shift output data
+    }
+
+    // terminate SPI transaction and set data low
+    digitalWrite(slaveSelectPin, HIGH);
+    digitalWrite(spiDataPin, LOW);
 }
