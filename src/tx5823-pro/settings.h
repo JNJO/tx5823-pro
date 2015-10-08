@@ -47,4 +47,12 @@ SOFTWARE.
 
 #define EEPROM_ADR_CALLSIGN 20
 
+
+#define STATE_SCREEN_SAVER 0
+#define STATE_BIND_MODE 1
+#define STATE_BIND_MODE_WAITING 2
+#define STATE_BIND_MODE_RECEIVED 3
+#define STATE_BIND_MODE_FAILED 4
+
+
 #endif // file_defined
