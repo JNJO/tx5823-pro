@@ -79,7 +79,7 @@ const uint8_t channelNames[] PROGMEM = {
 char call_sign[10];
 uint8_t channelIndex = 0;
 uint8_t state = 255; // force redraw
-
+unsigned long timeout = 0;
 // SETUP ----------------------------------------------------------------------------
 void setup()
 {
@@ -143,7 +143,7 @@ void loop()
     static uint8_t last_state = state;
     bool forceRedraw = false; // force a full screen redraw
     if(digitalRead(bindSwitch) == HIGH) {
-        state = STATE_BIND_MODE;
+        state = (state == STATE_SCREEN_SAVER || state == 255) ? STATE_BIND_MODE : state;
     }
     else {
         state = STATE_SCREEN_SAVER;
@@ -155,6 +155,7 @@ void loop()
 
 
     if(state == STATE_SCREEN_SAVER) {
+        digitalWrite(led,(millis() %2000 > 1000)); // blink LED fast in bind mode
         if(millis() % 125 == 0 || forceRedraw) {
             drawScreen.screenSaver(pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
         }
@@ -164,7 +165,13 @@ void loop()
         // watch for incoming payload
         if(hasReceivedPayload()) {
             forceRedraw = true;
-            //state = STATE_BIND_MODE_RECEIVED;
+            state = STATE_BIND_MODE_RECEIVED;
+            timeout = millis()+3000;
+            digitalWrite(led, HIGH); // Stay solid indecating a payload was received
+        }
+        if(timeout < millis()) {
+            state = STATE_BIND_MODE; // return to flashing bind mode.
+            digitalWrite(led, (millis() %125 > 62)); // blink LED fast in bind mode
         }
         if(millis() % 125 == 0 || forceRedraw) {
             drawScreen.bindMode(state, pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);

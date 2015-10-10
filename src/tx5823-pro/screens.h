@@ -42,6 +42,7 @@ class screens
 
         void updateStatus(const char *status);
         void updateStatus(const char *status, bool invert);
+        void updateStatus(const char *status, bool invert, bool blink);
 
         // BIND MODE
         void bindMode(uint8_t state, uint8_t channelName, uint16_t channelFrequency, const char *call_sign, bool force_redraw);
