@@ -43,7 +43,7 @@ Adafruit_SSD1306 display(OLED_RESET);
     #error("Screen size incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
-bool blink = true;
+bool blinker = true;
 
 screens::screens() {
 }
@@ -101,18 +101,27 @@ void screens::updateFrequencyInformation(uint8_t channelName, uint16_t channelFr
 }
 
 void screens::updateStatus(const char *status) {
-    updateStatus(status, false);
+    updateStatus(status, false, true);
 }
 
-void screens::updateStatus(const char *status,bool invert) {
-    blink = !blink;
+void screens::updateStatus(const char *status, bool invert) {
+    updateStatus(status, invert, true);
+}
+
+void screens::updateStatus(const char *status, bool invert, bool blink) {
+    if(blink) {
+        blinker = !blinker;
+    }
+    else {
+        blinker = invert ? false : true;
+    }
 
     // blank out status region
     display.fillRect(48, display.height()-9, display.width()-48, 9, invert ? WHITE : BLACK);
 
     display.setTextSize(1);
     display.setCursor(48+(invert ? ((((display.width()-48) - (strlen(status)*6)) / 2)) : 0),24); // center text
-    display.setTextColor(blink ? BLACK : WHITE);
+    display.setTextColor(blinker ? WHITE : BLACK);
     display.print(status);
 }
 
@@ -127,7 +136,7 @@ void screens::bindMode(uint8_t state, uint8_t channelName, uint16_t channelFrequ
             break;
         case STATE_BIND_MODE_RECEIVED:
             // received good data
-            updateStatus("RECEIVED");
+            updateStatus("RECEIVED",true,false);
             break;
         case STATE_BIND_MODE_FAILED:
             break;
