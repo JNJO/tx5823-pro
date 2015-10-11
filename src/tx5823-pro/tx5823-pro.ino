@@ -143,10 +143,10 @@ void loop()
     static uint8_t last_state = state;
     bool forceRedraw = false; // force a full screen redraw
     if(digitalRead(bindSwitch) == HIGH) {
-        state = (state == STATE_SCREEN_SAVER || state == 255) ? STATE_BIND_MODE : state;
+        state = (state == STATE_SCREEN_TRANSMITTING || state == 255) ? STATE_BIND_MODE : state;
     }
     else {
-        state = STATE_SCREEN_SAVER;
+        state = STATE_SCREEN_TRANSMITTING;
     }
 
     if(state != last_state) {
@@ -154,10 +154,13 @@ void loop()
     }
 
 
-    if(state == STATE_SCREEN_SAVER) {
+    if(state == STATE_SCREEN_TRANSMITTING) {
         digitalWrite(led,(millis() %2000 > 1000)); // blink LED fast in bind mode
-        if(millis() % 125 == 0 || forceRedraw) {
+        if(millis() % 1000 == 0 || forceRedraw) {
             drawScreen.screenSaver(pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
+
+            // tell transmitter to be on the correct channel.
+            set_5823_freq(channelIndex);
         }
     }
 
@@ -171,7 +174,7 @@ void loop()
         }
         if(timeout < millis()) {
             state = STATE_BIND_MODE; // return to flashing bind mode.
-            digitalWrite(led, (millis() %125 > 62)); // blink LED fast in bind mode
+            digitalWrite(led, (millis() %250 > 125)); // blink LED fast in bind mode
         }
         if(millis() % 125 == 0 || forceRedraw) {
             drawScreen.bindMode(state, pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
