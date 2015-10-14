@@ -80,6 +80,7 @@ char call_sign[10];
 uint8_t channelIndex = 0;
 uint8_t state = 255; // force redraw
 unsigned long timeout = 0;
+unsigned long receive_timeout = 0;
 // SETUP ----------------------------------------------------------------------------
 void setup()
 {
@@ -185,39 +186,50 @@ void loop()
 
 bool hasReceivedPayload() {
     if(Serial.available() > 0) {
-        delay(20); // give some time for more bytes to flow in.
-        // received payload should look something like this ... "~(byte channel)(char[10] call sign)~(byte check sum)"
-                                                                // EXAMPLES: ~!ShIvey03~Z  ~ Luk_Luk~U
+        receive_timeout = millis()+30;
+        delay(5);
+        // received payload should look something like this ... "STX(byte channel)(char[10] call sign)ETX(byte check sum)"
         uint8_t c;
-        bool found_start = false;
+        bool found_end = false,found_start = false;
         uint8_t i = 0;
         uint8_t check_sum_temp = 0, check_sum = 0;
         char call_sign_temp[10] = "";
         uint8_t channelIndex_temp = 0;
+        uint8_t total_bytes_read = 0;
         do{
-            delay(1); // give some time for more bytes to flow in.
-            c = Serial.read();
-            if(c == '~' && !found_start) { // start of payload
-                found_start = true;
-                check_sum_temp += c;
-                check_sum_temp += channelIndex_temp = Serial.read(); // read channel byte
-                continue;
-            }
+            if(Serial.available() > 1) { // make sure there is atleast 1 byte to read
+                c = Serial.read();
+                total_bytes_read++;
+                if(c == 2 && !found_start) { // Start of Text STX start of payload
+                    found_start = true;
+                    check_sum_temp += c;
+                    check_sum_temp += channelIndex_temp = Serial.read(); // read channel byte
 
-            if(c == '~' && found_start) { // end of payload
-                check_sum = (byte) Serial.read();
-                break;
+                    if(channelIndex_temp >= 40 || channelIndex_temp < 0) {
+                        break;
+                    }
+                    total_bytes_read = 2;
+                    continue;
+                }
+                if(c == 3 && found_start) { // End of Text ETX end of payload
+                    check_sum = (uint8_t) Serial.read();
+                    total_bytes_read++;
+                    found_end = true;
+                    break;
+                }
+                if(found_start) { // start reiving call sign chars.
+                    check_sum_temp += call_sign_temp[i++] = (char)c;
+                }
             }
-
-            if(found_start) { // start reiving call sign chars.
-                check_sum_temp += call_sign_temp[i++] = (char)c;
+            else {
+                delay(5); // give some time for more bytes to flow in.
             }
         }
-        while(Serial.available() > 0 && i < 10);
+        while(millis() < receive_timeout && i <= 10);
         call_sign_temp[i] = '\0';
         while(Serial.available() > 0){Serial.read();Serial.flush();delay(1);}; // clear teh remaining buffer
 
-        if(check_sum == (byte) check_sum_temp) { // save valid channelIndex and call_sign
+        if(check_sum == (uint8_t) check_sum_temp && total_bytes_read > 2 && found_start && found_end) { // save valid channelIndex and call_sign
             channelIndex = channelIndex_temp;
             strcpy(call_sign, call_sign_temp);
 
