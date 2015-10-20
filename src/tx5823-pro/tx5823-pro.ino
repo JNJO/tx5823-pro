@@ -75,7 +75,7 @@ const uint8_t channelNames[] PROGMEM = {
   0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8  // Band C / Immersion Raceband
 };
 
-
+bool channel_sent = false;
 char call_sign[10];
 uint8_t channelIndex = 0;
 uint8_t state = 255; // force redraw
@@ -120,6 +120,11 @@ void setup()
         call_sign[i] = EEPROM.read(EEPROM_ADR_CALLSIGN+i);
     }
 
+
+    // set channel on boot
+    channel_sent = true;
+    set_5823_freq(channelIndex);
+
     // Setup Done - LED ON
     digitalWrite(led, HIGH);
 
@@ -135,6 +140,7 @@ void setup()
     // drawScreen.flip();
 
     Serial.begin(9600);
+
 
 }
 
@@ -156,26 +162,32 @@ void loop()
 
 
     if(state == STATE_SCREEN_TRANSMITTING) {
+        if(!channel_sent) {
+            channel_sent = true;
+            delay(150);
+            // tell transmitter to be on the correct channel.
+            set_5823_freq(channelIndex);
+        }
         digitalWrite(led,(millis() %2000 > 1000)); // blink LED fast in bind mode
         if(millis() % 1000 == 0 || forceRedraw) {
             drawScreen.screenSaver(pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
 
-            // tell transmitter to be on the correct channel.
-            set_5823_freq(channelIndex);
         }
     }
 
     if(state >= STATE_BIND_MODE && state <= STATE_BIND_MODE_FAILED) {
+        channel_sent = false;
         // watch for incoming payload
         if(hasReceivedPayload()) {
             forceRedraw = true;
             state = STATE_BIND_MODE_RECEIVED;
             timeout = millis()+3000;
             digitalWrite(led, HIGH); // Stay solid indecating a payload was received
+            set_5823_freq(channelIndex);
         }
         if(timeout < millis()) {
             state = STATE_BIND_MODE; // return to flashing bind mode.
-            digitalWrite(led, (millis() %250 > 125)); // blink LED fast in bind mode
+            digitalWrite(led, (millis() % 250 > 125)); // blink LED fast in bind mode
         }
         if(millis() % 125 == 0 || forceRedraw) {
             drawScreen.bindMode(state, pgm_read_byte_near(channelNames + channelIndex), pgm_read_word_near(channelFreqTable + channelIndex), call_sign, forceRedraw);
