@@ -275,7 +275,9 @@ void spi_write(uint8_t addr, uint32_t data)
 
     // start SPI transaction
     digitalWrite(spiClockPin, LOW);
+    delayMicroseconds(1);
     digitalWrite(slaveSelectPin, LOW);
+    delayMicroseconds(1);
 
     // clock out data LSB first
     for (uint8_t i = 25; i > 0; i--) {
@@ -285,12 +287,16 @@ void spi_write(uint8_t addr, uint32_t data)
         else {
               digitalWrite(spiDataPin, LOW);   // output 0
         }
+        delayMicroseconds(1);
         digitalWrite(spiClockPin, HIGH);   // data latched by 5823 here
+        delayMicroseconds(1);
         digitalWrite(spiClockPin, LOW);    // clock ends low
-        output >>= 1;                        // shift output data
+        output >>= 1;                      // shift output data
+        delayMicroseconds(1);
     }
 
     // terminate SPI transaction and set data low
     digitalWrite(slaveSelectPin, HIGH);
+    delayMicroseconds(1);
     digitalWrite(spiDataPin, LOW);
 }
