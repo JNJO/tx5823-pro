@@ -1,7 +1,7 @@
 # tx5823-pro
 The tx5823-pro transmitter module is configured via IR by the parent project [x5808-pro-diversity](https://github.com/sheaivey/rx5808-pro-diversity/).
 
-Here is a quick demo showing of how works with the parent project.
+Here is a quick demo showing how it works with the parent project.
 [![](http://img.youtube.com/vi/ge-of5_kmcc/0.jpg)](https://youtu.be/ge-of5_kmcc)
 
 ## features
@@ -29,6 +29,9 @@ Here is a quick demo showing of how works with the parent project.
 ## Hardware
 The schematic is quite simple and allows for an optional OLED display.
 ![](docs/img/tx5823-pro-schematic.jpg)
+
+You will also need to modify the tx5823 module to receive SPI commands. See the
+[SPI Modification](docs/tx5823-spi-mod.md) for details.
 
 ## License & Recognition
 #### Recognition
