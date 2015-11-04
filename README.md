@@ -1,5 +1,5 @@
 # tx5823-pro
-The tx5823-pro transmitter module is configured via IR by the parent project [x5808-pro-diversity](https://github.com/sheaivey/rx5808-pro-diversity/).
+The tx5823-pro transmitter module is configured via IR by the parent project [rx5808-pro-diversity](https://github.com/sheaivey/rx5808-pro-diversity/).
 
 Here is a quick demo showing how it works with the parent project.
 [![](http://img.youtube.com/vi/ge-of5_kmcc/0.jpg)](https://youtu.be/ge-of5_kmcc)
