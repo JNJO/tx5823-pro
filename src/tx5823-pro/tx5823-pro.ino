@@ -128,6 +128,8 @@ void setup()
     // Setup Done - LED ON
     digitalWrite(led, HIGH);
 
+    delay(100); // give some time for screen to power on.
+
     // Init Display
     if (drawScreen.begin(call_sign) > 0) {
         // on Error flicker LED
