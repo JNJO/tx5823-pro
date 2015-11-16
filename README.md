@@ -4,6 +4,13 @@ The tx5823-pro transmitter module is configured via IR by the parent project [rx
 Here is a quick demo showing how it works with the parent project.
 [![](http://img.youtube.com/vi/ge-of5_kmcc/0.jpg)](https://youtu.be/ge-of5_kmcc)
 
+## Donations Welcome!
+**Help fund more research and development into these great open source projects.**
+
+[![Donations](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=GE83PG4KBZ5NJ)
+
+Donations help show the developer your appreciation for all their hard work. A little goes a long way whether it is used for new hardware samples or better test equipment, you can be sure it will be put to good use.
+
 ## features
 * **SPI** - controlled tx5823 module.
 * **Channel & Call Sign Memory** - Retreive last received channel and call sign on bootup.
